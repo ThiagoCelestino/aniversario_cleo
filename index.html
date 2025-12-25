@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>It's Cleo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #050505;
+      overflow: hidden;
+      font-family: 'Times New Roman', serif;
+    }
+
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      transition: opacity 2s ease-out;
+    }
+
+    .loader-text {
+      color: #D4AF37;
+      letter-spacing: 5px;
+      font-size: 14px;
+      margin-top: 15px;
+      text-transform: uppercase;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 1px solid #333;
+      border-top: 1px solid #D4AF37;
+      border-radius: 50%;
+      animation: spin 1s infinite linear;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    #ui {
+      position: fixed;
+      bottom: 40px;
+      width: 100%;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 3s ease-in 1s;
+    }
+
+    .title {
+      font-size: 38px;
+      color: #D4AF37;
+      font-style: italic;
+      text-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: #888;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-top: 5px;
+    }
+
+    .vignette {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, transparent 40%, #000 120%);
+      pointer-events: none;
+      z-index: 10;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="vignette"></div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <div class="loader-text">Preparando Surpresa...</div>
+  </div>
+
+  <div id="ui">
+    <div class="title">Feliz Aniversário</div>
+    <div class="subtitle">Para a melhor flautista</div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    const CONFIG = {
+      mesa: {
+        arquivo: './3D/mesa.glb',
+        escala: 18.1137,
+        pos: { x: 0, y: -4.1, z: 0 },
+        rot: { x: 0, y: 0, z: 0 }
+      },
+      violino: {
+        arquivo: './3D/violino.glb',
+        escala: 0.1,
+        pos: { x: 5.32, y: 4.245, z: 0.4 },
+        rot: { x: 0.064, y: 0.064, z: 0.0256 }
+      },
+      flauta: {
+        arquivo: './3D/flauta.glb',
+        escala: 0.3,
+        pos: { x: 2.62, y: 3.36, z: -0.32 },
+        rot: { x: 0, y: -3.0144, z: -0.2624 }
+      },
+      fotos: [
+        {
+          arquivo: './imgs/foto1.jpg',
+          pos: { x: -3.5, y: 3.2, z: 2 },
+          rot: { x: -Math.PI / 2, y: 0, z: 0.1 },
+          tamanho: 2.5
+        },
+        {
+          arquivo: './imgs/foto2.jpg',
+          pos: { x: -3, y: 3.2, z: -2.5 },
+          rot: { x: -Math.PI / 2, y: 0, z: -0.05 },
+          tamanho: 1.8
+        },
+        {
+          arquivo: './imgs/foto3.jpg',
+          pos: { x: -5, y: 3.2, z: -1 },
+          rot: { x: -Math.PI / 2, y: 0, z: 0.15 },
+          tamanho: 1.8
+        }
+      ],
+      carta: {
+        titulo: "Feliz Aniversário",
+        linhas: [
+          "Oi, Cleo,",
+          "",
+          "Passei um tempo pensando",
+          "no que escrever aqui",
+          "porque você não combina",
+          "com mensagem genérica.",
+          "",
+          "Em pouco tempo deu pra ver",
+          "que você é curiosa,",
+          "cheia de ideias",
+          "e com uma mente que",
+          "não para quieta.",
+          "",
+          "Que esse novo ano venha",
+          "com boas descobertas,",
+          "boas conversas",
+          "e desafios legais",
+          "(dos que fazem crescer).",
+          "",
+          "Continue aprendendo línguas,",
+          "dominando o mundo aos poucos",
+          "e sendo exatamente quem você é.",
+          "",
+          "Feliz aniversário.",
+          "Hehehehehehe."
+        ]
+      }
+
+    };
+
+    let scene, camera, renderer, controls, particles;
+    let loadedCount = 0;
+    const totalToLoad = 6;
+
+    init();
+
+    function init() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x050505);
+      scene.fog = new THREE.Fog(0x050505, 8, 25);
+
+      camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(0, 14, 2);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.3;
+      document.body.appendChild(renderer.domElement);
+
+      setupLighting();
+
+      loadObject('mesa', CONFIG.mesa, false);
+      loadObject('violino', CONFIG.violino, false);
+      loadObject('flauta', CONFIG.flauta, true);
+      createLetter();
+      createMagicDust();
+
+      CONFIG.fotos.forEach((foto, index) => {
+        loadPhoto(foto, index);
+      });
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.autoRotate = false;
+      controls.minDistance = 2;
+      controls.maxDistance = 25;
+
+      window.addEventListener('resize', onWindowResize);
+      animate();
+    }
+
+    function setupLighting() {
+      const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambient);
+
+      const spot = new THREE.SpotLight(0xffeebb, 60);
+      spot.position.set(5, 10, 5);
+      spot.castShadow = true;
+      spot.angle = 0.6;
+      spot.penumbra = 0.5;
+      spot.shadow.mapSize.set(2048, 2048);
+      spot.shadow.bias = -0.0001;
+      scene.add(spot);
+
+      const rim = new THREE.SpotLight(0x4455ff, 20);
+      rim.position.set(-5, 5, -5);
+      rim.lookAt(0, 0, 0);
+      scene.add(rim);
+    }
+
+    function loadObject(name, conf, isGold) {
+      const loader = new GLTFLoader();
+
+      const goldMat = new THREE.MeshStandardMaterial({
+        color: 0xffd700, metalness: 1.0, roughness: 0.15,
+        emissive: 0x221100, emissiveIntensity: 0.2, envMapIntensity: 1.5
+      });
+
+      loader.load(conf.arquivo, (gltf) => {
+        const model = gltf.scene;
+
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        model.position.sub(center);
+
+        const group = new THREE.Group();
+        group.add(model);
+
+        group.scale.set(conf.escala, conf.escala, conf.escala);
+        group.position.set(conf.pos.x, conf.pos.y, conf.pos.z);
+        group.rotation.set(conf.rot.x, conf.rot.y, conf.rot.z);
+
+        group.traverse((c) => {
+          if (c.isMesh) {
+            c.castShadow = true; c.receiveShadow = true;
+            if (isGold) c.material = goldMat;
+            else if (c.material) {
+              c.material.envMapIntensity = 1;
+              c.material.needsUpdate = true;
+            }
+          }
+        });
+
+        scene.add(group);
+        checkLoad();
+      }, undefined, (e) => console.error(e));
+    }
+
+    function loadPhoto(conf, index) {
+      const loader = new THREE.TextureLoader();
+
+      loader.load(conf.arquivo, (texture) => {
+        const img = texture.image;
+        const aspectRatio = img.width / img.height;
+        const frameThickness = 0.08;
+        const photoSize = conf.tamanho;
+
+        let photoWidth, photoHeight;
+        if (aspectRatio > 1) {
+          photoWidth = photoSize;
+          photoHeight = photoSize / aspectRatio;
+        } else {
+          photoHeight = photoSize;
+          photoWidth = photoSize * aspectRatio;
+        }
+
+        const frameWidth = photoWidth + frameThickness * 2;
+        const frameHeight = photoHeight + frameThickness * 2;
+        const photoGroup = new THREE.Group();
+
+        const frameMat = new THREE.MeshStandardMaterial({
+          color: 0xffffff, roughness: 0.3, metalness: 0.1
+        });
+        const frame = new THREE.Mesh(
+          new THREE.PlaneGeometry(frameWidth, frameHeight),
+          frameMat
+        );
+        frame.receiveShadow = true;
+        frame.castShadow = true;
+        photoGroup.add(frame);
+
+        const photoMat = new THREE.MeshStandardMaterial({
+          map: texture, roughness: 0.5, metalness: 0.0
+        });
+        const photo = new THREE.Mesh(
+          new THREE.PlaneGeometry(photoWidth, photoHeight),
+          photoMat
+        );
+        photo.position.z = 0.01;
+        photo.receiveShadow = true;
+        photoGroup.add(photo);
+
+        photoGroup.position.set(conf.pos.x, conf.pos.y, conf.pos.z);
+        photoGroup.rotation.set(conf.rot.x, conf.rot.y, conf.rot.z);
+
+        scene.add(photoGroup);
+        checkLoad();
+      }, undefined, (e) => {
+        console.error(`Erro ao carregar ${conf.arquivo}:`, e);
+        checkLoad();
+      });
+    }
+
+    function createLetter() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1536;
+
+      const lineHeight = 85;
+      const headerSpace = 500;
+      const footerSpace = 200;
+      const emptyLineSpace = 40;
+
+      let espacoLinhas = 0;
+      CONFIG.carta.linhas.forEach(line => {
+        espacoLinhas += (line === "") ? emptyLineSpace : lineHeight;
+      });
+
+      const alturaCalculada = headerSpace + espacoLinhas + footerSpace;
+      canvas.height = Math.max(1536, alturaCalculada);
+
+      const ctx = canvas.getContext('2d');
+
+      const gradient = ctx.createRadialGradient(768, canvas.height / 2, 200, 768, canvas.height / 2, canvas.height / 2);
+      gradient.addColorStop(0, '#fffef7');
+      gradient.addColorStop(1, '#f5f0e1');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 1536, canvas.height);
+
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(80, 80, 1376, canvas.height - 160);
+
+      ctx.strokeStyle = '#c9a959';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(100, 100, 1336, canvas.height - 200);
+
+      ctx.fillStyle = '#d4af37';
+      ctx.font = "60px serif";
+      ctx.textAlign = "center";
+      ctx.fillText("🪈 🎼 ✨", 768, 200);
+
+      ctx.fillStyle = "#2c1810";
+      ctx.font = "bold italic 110px 'Georgia', serif";
+      ctx.textAlign = "center";
+      ctx.fillText(CONFIG.carta.titulo, 768, 320);
+
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(468, 350);
+      ctx.lineTo(1068, 350);
+      ctx.stroke();
+
+      ctx.fillStyle = "#1a1a1a";
+      ctx.font = "italic 58px 'Georgia', serif";
+      ctx.textAlign = "center";
+      let y = 480;
+
+      CONFIG.carta.linhas.forEach(line => {
+        if (line === "") {
+          y += emptyLineSpace;
+        } else {
+          ctx.fillText(line, 768, y);
+          y += lineHeight;
+        }
+      });
+
+      ctx.fillStyle = '#d4af37';
+      ctx.font = "50px serif";
+      ctx.fillText("✦ ❧ ✦", 768, y + 60);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+      const aspectRatio = canvas.width / canvas.height;
+      const cardWidth = 3.0;
+      const cardHeight = cardWidth / aspectRatio;
+
+      const card = new THREE.Mesh(
+        new THREE.PlaneGeometry(cardWidth, cardHeight),
+        new THREE.MeshStandardMaterial({
+          map: tex,
+          roughness: 0.7,
+          metalness: 0.0,
+          side: THREE.DoubleSide
+        })
+      );
+      card.rotation.x = -Math.PI / 2;
+      card.position.set(0, 3.15, 0);
+      card.receiveShadow = true;
+      card.castShadow = true;
+      scene.add(card);
+    }
+
+    function createMagicDust() {
+      const geom = new THREE.BufferGeometry();
+      const pos = [];
+      for (let i = 0; i < 300; i++) {
+        pos.push((Math.random() - 0.5) * 15, (Math.random() - 0.5) * 10 + 2, (Math.random() - 0.5) * 15);
+      }
+      geom.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      particles = new THREE.Points(geom, new THREE.PointsMaterial({
+        color: 0xffd700, size: 0.08, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending
+      }));
+      scene.add(particles);
+    }
+
+    function checkLoad() {
+      loadedCount++;
+      if (loadedCount === totalToLoad) {
+        const el = document.getElementById('loading');
+        el.style.opacity = 0;
+        setTimeout(() => { el.remove(); document.getElementById('ui').style.opacity = 1; }, 2000);
+      }
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+
+      const dist = camera.position.distanceTo(controls.target);
+
+      let targetExposure = 1.3 + (dist - 8) * 0.08;
+      targetExposure = Math.max(1.3, Math.min(targetExposure, 2.5));
+
+      renderer.toneMappingExposure += (targetExposure - renderer.toneMappingExposure) * 0.1;
+
+      if (particles) {
+        particles.rotation.y += 0.001;
+        particles.position.y = Math.sin(Date.now() * 0.0005) * 0.2;
+      }
+
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
+
+</html>
