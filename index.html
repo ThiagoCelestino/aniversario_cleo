@@ -203,7 +203,7 @@
     function init() {
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x050505);
-      scene.fog = new THREE.Fog(0x050505, 8, 25);
+      scene.fog = new THREE.Fog(0x050505, 10, 80);
 
       camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
       camera.position.set(0, 14, 2);
@@ -233,7 +233,7 @@
       controls.enableDamping = true;
       controls.autoRotate = false;
       controls.minDistance = 2;
-      controls.maxDistance = 25;
+      controls.maxDistance = 30;
 
       window.addEventListener('resize', onWindowResize);
       animate();
